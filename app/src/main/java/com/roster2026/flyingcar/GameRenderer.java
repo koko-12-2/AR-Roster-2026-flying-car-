@@ -15,6 +15,7 @@ final class GameRenderer implements GLSurfaceView.Renderer {
     private int program, positionHandle, colorHandle, mvpHandle;
     private FloatBuffer cube;
     private final float[] projection = new float[16], view = new float[16], model = new float[16], mvp = new float[16], temp = new float[16];
+    private final float[] carTransform = new float[16], partTransform = new float[16];
     private long previous;
     private float carX, carY = 2.2f, carZ, yaw;
 
@@ -33,7 +34,6 @@ final class GameRenderer implements GLSurfaceView.Renderer {
         colorHandle = GLES20.glGetUniformLocation(program, "uColor");
         mvpHandle = GLES20.glGetUniformLocation(program, "uMvp");
         float[] vertices = {
-            // Front, back, left, right, top and bottom; triangles
             -1,-1,1, 1,-1,1, 1,1,1, -1,-1,1, 1,1,1, -1,1,1,
             1,-1,-1, -1,-1,-1, -1,1,-1, 1,-1,-1, -1,1,-1, 1,1,-1,
             -1,-1,-1, -1,-1,1, -1,1,1, -1,-1,-1, -1,1,1, -1,1,-1,
@@ -70,8 +70,8 @@ final class GameRenderer implements GLSurfaceView.Renderer {
     }
 
     private void drawWorld() {
-        box(0,-0.65f,-42,90,0.5f,125,0.27f,0.34f,0.34f,1); // city ground
-        box(0,-0.37f,-42,8,0.08f,125,0.19f,0.22f,0.23f,1); // road
+        box(0,-0.65f,-42,90,0.5f,125,0.27f,0.34f,0.34f,1);
+        box(0,-0.37f,-42,8,0.08f,125,0.19f,0.22f,0.23f,1);
         for(int i=0;i<18;i++){
             float z=-8-i*7.0f;
             box(0,-0.30f,z,0.12f,0.04f,2.1f,0.88f,0.79f,0.56f,1);
@@ -85,17 +85,14 @@ final class GameRenderer implements GLSurfaceView.Renderer {
                 float r=palette[(i*3)%palette.length],g=palette[(i*3+1)%palette.length],b=palette[(i*3+2)%palette.length];
                 box(x,height/2-0.25f,z,width,height,4.2f,r,g,b,1);
                 box(x,height-0.18f,z,width+0.15f,0.25f,4.35f,r*0.76f,g*0.76f,b*0.76f,1);
-                // Repeated bright facade bands read as windows at game-camera distance.
                 for(int row=1;row<Math.min(5,(int)(height/1.3f));row++){
                     float wy=row*1.25f;
                     box(x,wy,z+2.13f,width*0.72f,0.12f,0.035f,0.54f,0.72f,0.76f,1);
                     box(x+side*(width/2+0.025f),wy,z,width*0.035f,0.11f,2.6f,0.48f,0.65f,0.70f,1);
                 }
-                // rooftop equipment
                 box(x+0.5f,height+0.25f,z,0.45f,0.45f,0.55f,0.38f,0.42f,0.42f,1);
             }
         }
-        // Rooftops near the player add recognizable foreground detail.
         for(int side=-1;side<=1;side+=2){
             box(side*9f,0.0f,5f,15f,0.35f,12f,0.47f,0.50f,0.48f,1);
             for(int j=0;j<7;j++) box(side*(2.5f+j*2.1f),0.23f,1f,0.08f,0.025f,11f,0.68f,0.70f,0.67f,1);
@@ -104,8 +101,7 @@ final class GameRenderer implements GLSurfaceView.Renderer {
     }
 
     private void drawCar() {
-        Matrix.setIdentityM(model,0); Matrix.translateM(model,0,carX,carY,carZ); Matrix.rotateM(model,0,(float)Math.toDegrees(yaw),0,1,0);
-        // Main sleek white fuselage with dark canopy and wings.
+        Matrix.setIdentityM(carTransform,0); Matrix.translateM(carTransform,0,carX,carY,carZ); Matrix.rotateM(carTransform,0,(float)Math.toDegrees(yaw),0,1,0);
         localBox(0,0,0,2.6f,0.62f,4.6f,0.88f,0.91f,0.91f,1);
         localBox(0,0.48f,-0.35f,1.65f,0.65f,1.95f,0.16f,0.23f,0.28f,1);
         localBox(0,-0.12f,-0.25f,5.6f,0.16f,1.35f,0.75f,0.78f,0.78f,1);
@@ -121,7 +117,11 @@ final class GameRenderer implements GLSurfaceView.Renderer {
         Matrix.setIdentityM(model,0);Matrix.translateM(model,0,x,y,z);Matrix.scaleM(model,0,sx/2,sy/2,sz/2);submit(r,g,b,a);
     }
     private void localBox(float x,float y,float z,float sx,float sy,float sz,float r,float g,float b,float a){
-        Matrix.pushMatrix(model,0); // Android Matrix has no stack: preserve current car transform explicitly below.
+        Matrix.setIdentityM(partTransform,0);
+        Matrix.translateM(partTransform,0,x,y,z);
+        Matrix.scaleM(partTransform,0,sx/2,sy/2,sz/2);
+        Matrix.multiplyMM(model,0,carTransform,0,partTransform,0);
+        submit(r,g,b,a);
     }
     private void submit(float r,float g,float b,float a){
         Matrix.multiplyMM(temp,0,view,0,model,0);Matrix.multiplyMM(mvp,0,projection,0,temp,0);
