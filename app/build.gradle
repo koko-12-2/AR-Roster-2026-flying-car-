@@ -1,0 +1,32 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.roster2026.flyingcar'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.roster2026.flyingcar'
+        minSdk 23
+        targetSdk 28
+        versionCode 1
+        versionName '1.0'
+    }
+
+    sourceSets {
+        main {
+            assets.srcDir(layout.buildDirectory.dir('generated/gameAssets'))
+        }
+    }
+}
+
+// Keep one copy of the game: package the repository's root index.html as an APK asset.
+ def copyGameHtml = tasks.register('copyGameHtml', Copy) {
+    from(rootProject.file('index.html'))
+    into(layout.buildDirectory.dir('generated/gameAssets'))
+}
+
+tasks.named('preBuild').configure {
+    dependsOn(copyGameHtml)
+}
